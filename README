@@ -1,0 +1,148 @@
+ABOUT
+=====
+
+Readme for GeoTiffOvl
+
+    * MP Sonnemann <caffeine.addicted@gmail.com>
+    * License: GPL v2 or later
+
+
+GeoTiffOvl displays a georeferenced Tiff image correctly aligned and scaled
+alongside with other geo layers.
+
+
+SETUP
+=====
+
+You need a working GDAL installation with Java bindings. If your system has pre-
+packaged binaries, use them. But most likely you will have to compile them from
+source. Windows users may want to get binaries from http://fwtools.maptools.org/
+and join me again after the next step.
+
+
+COMPILING GDAL FROM SOURCE (Linux)
+----------------------------------
+
+Pre-requisites may include: PROJ.4, gcc, checkinstall and a lot more. You will
+see it as soon the compiler complains.
+
+Uninstall previous versions of GDAL/OGR, if you have any.
+
+Download the latest version from http://trac.osgeo.org/gdal/wiki/DownloadSource
+You will need the one labeled "source as .tar.gz".
+
+From now on, you will need a terminal. Everything prefixed with a dollar sign ($)
+needs to be typed into that terminal.
+
+Open your terminal and change to the directory where you saved the archive.
+Extract it via
+
+$ tar xvf gdal-XYZ.tar.gz
+
+into the current directory, then configure it by typing
+
+$ cd gdal-XYZ
+$ ./configure
+
+(for more options, see ./configure --help).
+Now, compile it:
+
+$ make
+
+Grab a coffee. Once it has finished, install your new library. If you are on a
+Debian system (Ubuntu is one!), you may issue checkinstall to integrate it with
+apt and enable clean uninstalls:
+
+$ sudo checkinstall
+
+all others may get lucky with
+
+$ sudo make install
+
+but only if you got root :)
+
+Finally, it is time to build the Java bindings.
+
+$ cd swig/java
+
+Open the file java.opt, check if JAVA_HOME is set to your JVM path, e.g.
+/usr/lib/default-java. Adjust, if needed. Then compile the code:
+
+$ make
+
+And install it
+
+$ sudo checkinstall
+
+or via
+
+$ sudo make install
+
+Congratulations!
+You may want to check if everything works by typing
+
+$ gdalinfo
+
+That confirms that the native library is working.
+Check your Java bindings by executing the following command inside the swig/java
+directory:
+
+$ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`
+$ java -classpath `pwd`/gdal.jar:`pwd`:`pwd`/apps GDALtest
+
+Load a georeferenced image and hope for the best.
+
+
+COMPILING GEOTIFFOVL FROM SOURCE
+--------------------------------
+
+If you have the JOSM-plugin repo checked out, then place it there under plugins.
+If you haven't, then you have to take care to place the directory geotiffovl
+two directories deep, meaning:
+
++--- geotiff-plugin
+  +-- src            <-- NEEDED! name is irrelevant
+   |-- geotiffovl    <-- place source here
+
+This is necessary because ant will place the jar under '../../dist' - in this
+case, geotiff-plugin/dist - clobbering happily anything that lies in its path.
+
+
+Run ant inside the geotiffovl directory.
+
+$ ant install
+
+will compile the sources, create a JAR file and place it inside your JOSM plugin-
+directory.
+
+Start JOSM, go to the preferences (Edit->Preferences or <F12>). Click on the icon
+with the power plug and type geotiffovl into the search box. Only one plugin
+named geotiffovl should be visible. Enable it by ticking the check box. Restart
+JOSM.
+
+Now you will have another menu entry: "GeoTiff". Click it to add a new image
+layer. Have fun!
+
+If the plugin will not start, complaining about a ClassNotFoundException for
+org.gdal.gdal.gdal, then you will have to supply the dir where gdal.jar is
+located to the VM via the switch -Djava.ext.dirs=/path/to/gdal.jar/dir. Or you
+may hard-wire the location into the build.xml: Open the build.xml file inside
+the geotiffovl directory and search for the word "Class-Path". Locate gdal.jar
+on your system and provide it there.
+
+
+
+TROUBLESHOOTING
+===============
+
+PROBLEM:    Java complains about some JNI stuff!
+RESOLUTION: Check if the file libgdaljni.so/libgdaljni.dll is in your path.
+            Either adjust the path environment variable, add it to your
+            LD_LIBRARY_PATH if you are on Linux, or start JOSM with the following
+            switches to the java VM: -Djava.library.path=/path/to/gdallibs
+
+PROBLEM:    Red text has appeared instead of my image!
+RESOLUTION: Oh dear, that's not good. What's it say? Either you are using a
+            non-standard geographic projection (no EPSG code), or your image is
+            trashed, or something else is scrambling your bits.
+            You know how to debug?
