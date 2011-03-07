@@ -82,7 +82,7 @@ public class GDALRasterLayer extends Layer {
 	/**
 	 * Constructs a layer suitable to display a GDAL raster image with proper
 	 * alignment
-	 *
+	 * 
 	 * @param name
 	 *            Name for the layer, e.g. the source file name
 	 * @param dataset
@@ -98,7 +98,14 @@ public class GDALRasterLayer extends Layer {
 		m_image = null;
 
 		// Project image for the first time
-		invalidate();
+		try {
+			invalidate();
+		} catch (Exception e) {
+			System.err
+					.println(tr("Error occurred while initializing GDALRasterLayer:"));
+			System.err.println(e.getMessage());
+			e.printStackTrace(System.err);
+		}
 	}
 
 	@Override
@@ -119,6 +126,16 @@ public class GDALRasterLayer extends Layer {
 
 	@Override
 	public Object getInfoComponent() {
+
+		try {
+			invalidate();
+		} catch (Exception e) {
+			StringBuilder buf = new StringBuilder();
+			buf.append(tr("Unusable dataset:\n"));
+			buf.append(e.toString());
+			return buf.toString();
+		}
+
 		StringBuilder buf = new StringBuilder();
 
 		buf.append(tr("Source image properties:\n"));
@@ -210,6 +227,7 @@ public class GDALRasterLayer extends Layer {
 	class ProjectionException extends RuntimeException {
 		private static final long serialVersionUID = 3410650905450388838L;
 		public String currentProj;
+
 		public ProjectionException(String proj, String message) {
 			super(message);
 			currentProj = proj;
@@ -218,9 +236,9 @@ public class GDALRasterLayer extends Layer {
 	}
 
 	/**
-	 * Reprojects image and updates transformation matrices, if needed.
-	 * Throws NullPointerException if dataset is null
-	 * Throws ProjectionException if current projection is invalid
+	 * Reprojects image and updates transformation matrices, if needed. Throws
+	 * NullPointerException if dataset is null Throws ProjectionException if
+	 * current projection is invalid
 	 */
 	private void invalidate() {
 		// Guard against null-pointer
@@ -229,10 +247,9 @@ public class GDALRasterLayer extends Layer {
 		}
 
 		/*
-		 * Course of action: Check if we need to reproject the image iff:
-		 * a) Image just loaded, never displayed / projected
-		 * b) User has changed the projection in the settings
-		 * Then reproject image if needed
+		 * Course of action: Check if we need to reproject the image iff: a)
+		 * Image just loaded, never displayed / projected b) User has changed
+		 * the projection in the settings Then reproject image if needed
 		 */
 
 		// For now, they seem to use only EPSG codes.
@@ -247,7 +264,8 @@ public class GDALRasterLayer extends Layer {
 			try {
 				dstWkt = projCodeToWkt(currentProj);
 			} catch (RuntimeException e) {
-				throw new ProjectionException("'"+currentProj+"' is not a valid projection.", currentProj);
+				throw new ProjectionException("'" + currentProj
+						+ "' is not a valid projection.", currentProj);
 			}
 
 			// Reproject dataset
@@ -255,6 +273,13 @@ public class GDALRasterLayer extends Layer {
 			double maxError = 0.2; // Maximum error in source image pixels
 			Dataset projDataset = gdal.AutoCreateWarpedVRT(m_srcDataset, null,
 					dstWkt, eResampleAlg, maxError);
+
+			if (projDataset == null) {
+				// Image has no transformation info and/or no GCPs
+				// Rethrow exception for callers
+				throw new NullPointerException(
+						tr("Source image could not be reprojected. It is probably not properly georeferenced."));
+			}
 
 			// Current geo transform
 			m_geoTransform = projDataset.GetGeoTransform();
@@ -277,15 +302,17 @@ public class GDALRasterLayer extends Layer {
 			// Just display a big red error text
 			g.setColor(Color.red);
 			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
-			g.drawString(tr("Image layer '{0}': DATASET IS NULL", m_name), 20,
-					100);
+			g.drawString(tr(
+					"Image layer {0}: IMAGE IS NOT PROPERLY GEOREFERENCED",
+					m_name), 20, 100);
 			return;
 		} catch (ProjectionException e) {
 			g.setColor(Color.red);
 			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
-			g.drawString("Image layer '" + m_name
-					+ "': CANNOT COMPREHEND PROJECTION '" + e.currentProj + "'",
-					20, 100);
+			g.drawString(
+					"Image layer '" + m_name
+							+ "': CANNOT COMPREHEND PROJECTION '"
+							+ e.currentProj + "'", 20, 100);
 			return;
 		}
 
@@ -355,22 +382,28 @@ public class GDALRasterLayer extends Layer {
 	@Override
 	public void visitBoundingBox(BoundingXYVisitor v) {
 
-		Point2D geoUpperLeft = GDALTools
-				.applyGeoTransform(0, 0, m_geoTransform);
-		Point2D geoBottomRight = GDALTools
-				.applyGeoTransform(m_image.getWidth() - 1,
-						m_image.getHeight() - 1, m_geoTransform);
+		try {
+			Point2D geoUpperLeft = GDALTools.applyGeoTransform(0, 0,
+					m_geoTransform);
+			Point2D geoBottomRight = GDALTools.applyGeoTransform(m_image
+					.getWidth() - 1, m_image.getHeight() - 1, m_geoTransform);
 
-		ProjectionBounds bounds = new ProjectionBounds(
-				toEastNorth(geoUpperLeft));
-		bounds.extend(toEastNorth(geoBottomRight));
+			ProjectionBounds bounds = new ProjectionBounds(
+					toEastNorth(geoUpperLeft));
+			bounds.extend(toEastNorth(geoBottomRight));
 
-		v.visit(bounds);
+			v.visit(bounds);
+		} catch (Exception e) {
+			System.err.println(tr("Error occurred in visitBoundingBox:"));
+			e.printStackTrace(System.err);
+		}
 	}
 
 	/**
 	 * Convenience function to convert a Point2D to a EastNorth instance
-	 * @param p geographically projected coordinates
+	 * 
+	 * @param p
+	 *            geographically projected coordinates
 	 */
 	private EastNorth toEastNorth(Point2D p) {
 		return new EastNorth(p.getX(), p.getY());

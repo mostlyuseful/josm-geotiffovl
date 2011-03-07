@@ -47,7 +47,7 @@ public class AddGeoTiffOverlayAction extends JosmAction {
 
 	/**
 	 * Filters files by extension
-	 *
+	 * 
 	 * To be used with JFileChooser
 	 */
 	public class FileFilterByExtension extends FileFilter {
@@ -56,13 +56,13 @@ public class AddGeoTiffOverlayAction extends JosmAction {
 
 		/**
 		 * Creates the filter
-		 *
+		 * 
 		 * Filtering is case-insensitive: ".bmp" matches "abc.bmp" as well as
 		 * "abc.BmP"
-		 *
+		 * 
 		 * Example: flt = new FileFilterByExtension(new String[] { ".bmp",
 		 * ".abc" });
-		 *
+		 * 
 		 * @param extensions
 		 *            file extensions, INCLUDING the dot!
 		 */
